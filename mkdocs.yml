@@ -1,0 +1,183 @@
+# Project information
+site_name: Kafka Connect OpenTelemetry Source Connector
+site_description: A Kafka Connect source connector that receives OpenTelemetry Protocol (OTLP) telemetry data and streams it into Apache Kafka topics
+site_author: Conduktor
+site_url: https://conduktor.github.io/kafka-connect-opentelemetry/
+
+# Repository
+repo_name: kafka-connect-opentelemetry
+repo_url: https://github.com/conduktor/kafka-connect-opentelemetry
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 Conduktor
+
+# Configuration
+theme:
+  name: material
+  language: en
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: red
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: red
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+  features:
+    # Navigation
+    - navigation.instant      # Instant loading (SPA-like)
+    - navigation.tracking     # URL updates with scroll
+    - navigation.tabs         # Top-level tabs
+    - navigation.tabs.sticky  # Sticky tabs
+    - navigation.sections     # Section navigation
+    - navigation.expand       # Expand sections by default
+    - navigation.path         # Breadcrumbs
+    - navigation.indexes      # Section index pages
+    - navigation.top          # Back to top button
+
+    # Search
+    - search.suggest          # Search suggestions
+    - search.highlight        # Highlight search terms
+    - search.share            # Share search results
+
+    # Table of contents
+    - toc.follow              # Follow TOC with scroll
+    - toc.integrate           # Integrate TOC into navigation
+
+    # Code
+    - content.code.copy       # Copy code button
+    - content.code.annotate   # Code annotations
+    - content.action.edit     # Edit page button
+    - content.action.view     # View source button
+    - content.tabs.link       # Link content tabs
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Build configuration
+strict: false  # Don't fail on warnings during build
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+      lang:
+        - en
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+
+# Extra CSS and JavaScript
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+
+# Extra configuration
+extra:
+  version:
+    provider: mike
+    default: latest
+
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/conduktor/kafka-connect-opentelemetry
+      name: GitHub Repository
+    - icon: fontawesome/brands/slack
+      link: https://conduktor.io/slack
+      name: Conduktor Slack Community
+    - icon: fontawesome/solid/globe
+      link: https://conduktor.io
+      name: Conduktor Website
+
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX  # Replace with actual GA4 ID
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/thumb-up-outline
+          name: This page was helpful
+          data: 1
+          note: Thanks for your feedback!
+        - icon: material/thumb-down-outline
+          name: This page could be improved
+          data: 0
+          note: Thanks for your feedback! Help us improve by <a href="https://github.com/conduktor/kafka-connect-opentelemetry/issues/new" target="_blank">opening an issue</a>.
+
+# Page tree
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/index.md
+    - Prerequisites: getting-started/prerequisites.md
+    - Configuration: getting-started/configuration.md
+  - Operations:
+    - Runbook: operations/RUNBOOK.md
+  - FAQ: faq.md
+  - Changelog: changelog.md

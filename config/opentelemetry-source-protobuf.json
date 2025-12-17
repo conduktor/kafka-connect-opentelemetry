@@ -1,0 +1,18 @@
+{
+  "name": "otlp-source-protobuf",
+  "config": {
+    "connector.class": "io.conduktor.connect.otel.OpenTelemetrySourceConnector",
+    "tasks.max": "1",
+
+    "otlp.grpc.enabled": "true",
+    "otlp.grpc.port": "4317",
+    "otlp.http.enabled": "false",
+
+    "kafka.topic.traces": "otlp-traces",
+    "kafka.topic.metrics": "otlp-metrics",
+    "kafka.topic.logs": "otlp-logs",
+
+    "otlp.message.format": "protobuf",
+    "otlp.message.queue.size": "50000"
+  }
+}

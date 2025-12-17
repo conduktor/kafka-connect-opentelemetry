@@ -1,0 +1,20 @@
+{
+  "name": "otlp-source-connector",
+  "config": {
+    "connector.class": "io.conduktor.connect.otel.OpenTelemetrySourceConnector",
+    "tasks.max": "1",
+
+    "otlp.grpc.enabled": "true",
+    "otlp.grpc.port": "4317",
+    "otlp.http.enabled": "true",
+    "otlp.http.port": "4318",
+
+    "kafka.topic.traces": "otlp-traces",
+    "kafka.topic.metrics": "otlp-metrics",
+    "kafka.topic.logs": "otlp-logs",
+
+    "otlp.message.format": "json",
+    "otlp.message.queue.size": "10000",
+    "otlp.bind.address": "0.0.0.0"
+  }
+}
