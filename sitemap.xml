@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/changelog/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/faq/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/getting-started/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/getting-started/configuration/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/getting-started/prerequisites/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+    <url>
+         <loc>https://conduktor.github.io/kafka-connect-opentelemetry/operations/RUNBOOK/</loc>
+         <lastmod>2025-12-17</lastmod>
+    </url>
+</urlset>
