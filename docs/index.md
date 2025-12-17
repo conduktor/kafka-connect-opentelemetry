@@ -339,6 +339,32 @@ CiYKFgoKc2VydmljZS5uYW1lEggSBmNoZWNrb3V0LXNlcnZpY2UKHgoTc2VydmljZS52ZXJzaW9u...
 
 Decode downstream using OTLP protobuf definitions.
 
+## Development & Testing
+
+### Building from Source
+
+```bash
+git clone https://github.com/conduktor/kafka-connect-opentelemetry.git
+cd kafka-connect-opentelemetry
+mvn clean package
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+mvn test
+
+# Integration tests (requires Docker)
+mvn verify
+```
+
+The test suite includes:
+
+- **Unit Tests**: Configuration validation, connector lifecycle, task management
+- **Integration Tests**: OTLP receiver behavior, gRPC/HTTP protocol handling, TLS configuration
+- **System Integration Tests** (`OtelConnectorSystemIT`): Full end-to-end testing with Testcontainers that spins up Kafka + Kafka Connect containers, sends OTLP telemetry via gRPC/HTTP, and verifies messages arrive in Kafka topics
+
 ## Community & Support
 
 - **GitHub Issues**: [Report bugs and request features](https://github.com/conduktor/kafka-connect-opentelemetry/issues)

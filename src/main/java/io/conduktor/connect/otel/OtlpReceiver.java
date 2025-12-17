@@ -374,7 +374,7 @@ public class OtlpReceiver {
 
         private void handleTraces(ChannelHandlerContext ctx, FullHttpRequest request, byte[] data) {
             try {
-                ExportTraceServiceRequest otlpRequest = ExportTraceServiceRequest.parseFrom(data);
+                ExportTraceServiceRequest otlpRequest = parseTraceRequest(request, data);
                 String message = convertToFormat(otlpRequest);
                 OtlpMessage otlpMessage = new OtlpMessage(OtlpSignalType.TRACES, message);
 
@@ -401,9 +401,20 @@ public class OtlpReceiver {
             }
         }
 
+        private ExportTraceServiceRequest parseTraceRequest(FullHttpRequest request, byte[] data) throws Exception {
+            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE, "application/x-protobuf");
+            if (contentType.contains("json")) {
+                ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
+                JsonFormat.parser().ignoringUnknownFields().merge(new String(data, StandardCharsets.UTF_8), builder);
+                return builder.build();
+            } else {
+                return ExportTraceServiceRequest.parseFrom(data);
+            }
+        }
+
         private void handleMetrics(ChannelHandlerContext ctx, FullHttpRequest request, byte[] data) {
             try {
-                ExportMetricsServiceRequest otlpRequest = ExportMetricsServiceRequest.parseFrom(data);
+                ExportMetricsServiceRequest otlpRequest = parseMetricsRequest(request, data);
                 String message = convertToFormat(otlpRequest);
                 OtlpMessage otlpMessage = new OtlpMessage(OtlpSignalType.METRICS, message);
 
@@ -430,9 +441,20 @@ public class OtlpReceiver {
             }
         }
 
+        private ExportMetricsServiceRequest parseMetricsRequest(FullHttpRequest request, byte[] data) throws Exception {
+            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE, "application/x-protobuf");
+            if (contentType.contains("json")) {
+                ExportMetricsServiceRequest.Builder builder = ExportMetricsServiceRequest.newBuilder();
+                JsonFormat.parser().ignoringUnknownFields().merge(new String(data, StandardCharsets.UTF_8), builder);
+                return builder.build();
+            } else {
+                return ExportMetricsServiceRequest.parseFrom(data);
+            }
+        }
+
         private void handleLogs(ChannelHandlerContext ctx, FullHttpRequest request, byte[] data) {
             try {
-                ExportLogsServiceRequest otlpRequest = ExportLogsServiceRequest.parseFrom(data);
+                ExportLogsServiceRequest otlpRequest = parseLogsRequest(request, data);
                 String message = convertToFormat(otlpRequest);
                 OtlpMessage otlpMessage = new OtlpMessage(OtlpSignalType.LOGS, message);
 
@@ -456,6 +478,17 @@ public class OtlpReceiver {
                 log.error("event=http_logs_error error={}", e.getMessage(), e);
                 sendHttpResponse(ctx, request, HttpResponseStatus.BAD_REQUEST,
                         "{\"error\":\"" + e.getMessage() + "\"}");
+            }
+        }
+
+        private ExportLogsServiceRequest parseLogsRequest(FullHttpRequest request, byte[] data) throws Exception {
+            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE, "application/x-protobuf");
+            if (contentType.contains("json")) {
+                ExportLogsServiceRequest.Builder builder = ExportLogsServiceRequest.newBuilder();
+                JsonFormat.parser().ignoringUnknownFields().merge(new String(data, StandardCharsets.UTF_8), builder);
+                return builder.build();
+            } else {
+                return ExportLogsServiceRequest.parseFrom(data);
             }
         }
 

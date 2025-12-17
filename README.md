@@ -116,7 +116,9 @@ Full documentation is available at: **[conduktor.github.io/kafka-connect-opentel
 - [Monitoring & Operations](https://conduktor.github.io/kafka-connect-opentelemetry/operations/RUNBOOK/)
 - [FAQ](https://conduktor.github.io/kafka-connect-opentelemetry/faq/)
 
-## Building from Source
+## Development
+
+### Building from Source
 
 ```bash
 git clone https://github.com/conduktor/kafka-connect-opentelemetry.git
@@ -125,6 +127,33 @@ mvn clean package
 ```
 
 Output: `target/kafka-connect-opentelemetry-1.0.0-jar-with-dependencies.jar`
+
+### Running Tests
+
+```bash
+# Run unit tests
+mvn test
+
+# Run integration tests (requires Docker)
+mvn verify
+
+# Run specific test class
+mvn test -Dtest=OpenTelemetrySourceConnectorConfigTest
+```
+
+### Test Coverage
+
+The test suite includes:
+
+- **Unit Tests**: Configuration validation, connector lifecycle, task management
+- **Integration Tests**: OTLP receiver behavior, gRPC/HTTP protocol handling, TLS configuration
+- **System Integration Tests** (`OtelConnectorSystemIT`): Full end-to-end testing with Testcontainers
+  - Spins up Kafka and Kafka Connect containers
+  - Deploys connector via REST API
+  - Sends OTLP traces, metrics, and logs via both gRPC and HTTP
+  - Verifies messages arrive in Kafka topics
+
+> **Note**: System integration tests require Docker to be running
 
 ## License
 
