@@ -58,19 +58,52 @@ services:
         sleep 5
         /opt/kafka/bin/connect-standalone.sh /tmp/connect-standalone.properties
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/ || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8083' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15
       start_period: 30s
+
+  # Auto-deploy the connector once Kafka Connect is ready
+  connector-deploy:
+    image: curlimages/curl:latest
+    container_name: connector-deploy-otel
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - |
+        echo "Deploying OpenTelemetry Source Connector..."
+        curl -X POST http://kafka-connect:8083/connectors \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "otlp-source",
+            "config": {
+              "connector.class": "io.conduktor.connect.otel.OpenTelemetrySourceConnector",
+              "tasks.max": "1",
+              "otlp.grpc.enabled": "true",
+              "otlp.grpc.port": "4317",
+              "otlp.http.enabled": "true",
+              "otlp.http.port": "4318",
+              "kafka.topic.traces": "otlp-traces",
+              "kafka.topic.metrics": "otlp-metrics",
+              "kafka.topic.logs": "otlp-logs",
+              "otlp.message.format": "json"
+            }
+          }'
+        echo ""
+        echo "Connector deployed! Check status at http://localhost:8083/connectors/otlp-source/status"
 
   # OpenTelemetry load generator for testing
   telemetrygen:
     image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest
     container_name: telemetrygen
     depends_on:
-      kafka-connect:
-        condition: service_healthy
+      connector-deploy:
+        condition: service_completed_successfully
     # Generate traces continuously for 10 minutes
     command:
       - traces
