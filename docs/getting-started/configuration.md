@@ -81,16 +81,77 @@ This uses:
 | **Downstream** | Easy JSON processing | Requires protobuf decoder |
 | **Best for** | Development, debugging | Production, high volume |
 
-### TLS Configuration (Planned)
+### TLS Configuration
 
-!!! info "Coming Soon"
-    TLS support is planned for a future release.
+TLS terminates on both the gRPC and HTTP receivers. When `otlp.tls.enabled` is `true`, the
+connector fails to start if the certificate or key is missing or invalid — it never silently
+falls back to plaintext.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `otlp.tls.enabled` | boolean | `false` | Enable TLS for OTLP receivers |
-| `otlp.tls.cert.path` | string | - | Path to TLS certificate file (PEM format) |
-| `otlp.tls.key.path` | string | - | Path to TLS private key file (PEM format) |
+| `otlp.tls.cert.path` | string | - | Path to TLS certificate chain (PEM format) |
+| `otlp.tls.key.path` | string | - | Path to TLS private key (PEM, PKCS#8, unencrypted) |
+
+### Authentication Configuration
+
+Authentication is enforced on the OTLP gRPC and HTTP ports. It is **disabled by default**
+(backward compatible); when disabled the ports accept any incoming telemetry. Enable it with
+`otlp.auth.enabled` and select one or more methods. A request is accepted if it satisfies **any**
+configured method.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `otlp.auth.enabled` | boolean | `false` | Enforce authentication on the OTLP receivers |
+| `otlp.auth.methods` | list | `[]` | Enabled methods: `api-key`, `oidc` (comma-separated) |
+| `otlp.auth.api-key` | password | - | Comma-separated list of valid API keys (masked in logs/REST) |
+| `otlp.auth.api-key.header` | string | `x-api-key` | Header (HTTP) / metadata key (gRPC) carrying the API key |
+| `otlp.auth.oidc.issuer` | string | - | OIDC issuer URL; tokens must carry a matching `iss` |
+| `otlp.auth.oidc.jwks-uri` | string | - | Explicit JWKS URI; derived from the issuer's discovery doc when empty |
+| `otlp.auth.oidc.audience` | string | - | Expected `aud` claim; not checked when empty |
+
+The connector fails fast at startup if `otlp.auth.enabled` is `true` but no method is set, if
+`api-key` is selected without `otlp.auth.api-key`, or if `oidc` is selected without
+`otlp.auth.oidc.issuer`.
+
+=== "API key"
+
+    ```json
+    {
+      "otlp.auth.enabled": "true",
+      "otlp.auth.methods": "api-key",
+      "otlp.auth.api-key": "${file:/secrets/otlp.properties:api-key}"
+    }
+    ```
+
+    Producers send the key in the configured header:
+
+    ```bash
+    # HTTP
+    curl -H "x-api-key: <key>" --data-binary @trace.pb \
+      http://collector:4318/v1/traces
+    ```
+
+    For gRPC, send the key as call metadata named `x-api-key`.
+
+=== "OIDC (bearer)"
+
+    ```json
+    {
+      "otlp.auth.enabled": "true",
+      "otlp.auth.methods": "oidc",
+      "otlp.auth.oidc.issuer": "https://idp.example/realms/otlp",
+      "otlp.auth.oidc.audience": "otlp-connector"
+    }
+    ```
+
+    Producers send an `Authorization: Bearer <jwt>` header (HTTP) or `authorization` metadata
+    (gRPC). The token signature is verified against the issuer's JWKS, and the `exp`, `iss` and
+    (when configured) `aud` claims are checked.
+
+!!! tip "Secrets"
+    `otlp.auth.api-key` is a `password` type. Prefer Kafka Connect `ConfigProvider` references
+    (e.g. `${file:...}`, Vault) over inlining the secret in the connector config.
 
 ## Configuration Examples
 
@@ -468,8 +529,10 @@ curl -X PUT http://localhost:8083/connector-plugins/io.conduktor.connect.otel.Op
 
 ### Security Considerations
 
+- **Enable authentication** (`otlp.auth.enabled`) on any port reachable beyond localhost — the
+  ports accept all telemetry when auth is disabled
+- **Enable TLS** (`otlp.tls.enabled`) so API keys and bearer tokens are not sent in clear text
 - Use `otlp.bind.address: "127.0.0.1"` if receiving telemetry from localhost only
-- Plan for TLS when feature is released
 - Secure Kafka Connect REST API with authentication
 - Restrict network access to OTLP ports (4317, 4318)
 - Use Kafka ACLs to control topic access

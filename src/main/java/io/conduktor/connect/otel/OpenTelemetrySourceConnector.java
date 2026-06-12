@@ -62,6 +62,40 @@ public class OpenTelemetrySourceConnector extends SourceConnector {
                         "TLS key path must be provided when TLS is enabled");
             }
         }
+
+        // Validate authentication configuration if enabled
+        if (config.isAuthEnabled()) {
+            if (config.getAuthMethods().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "At least one authentication method must be set in '"
+                                + OpenTelemetrySourceConnectorConfig.OTLP_AUTH_METHODS_CONFIG
+                                + "' when authentication is enabled (api-key, oidc)");
+            }
+            if (config.isApiKeyAuthEnabled() && !hasNonBlankApiKey(config.getApiKey())) {
+                throw new IllegalArgumentException(
+                        "'" + OpenTelemetrySourceConnectorConfig.OTLP_AUTH_API_KEY_CONFIG
+                                + "' must contain at least one non-blank key when the 'api-key' "
+                                + "authentication method is enabled");
+            }
+            if (config.isOidcAuthEnabled() && config.getOidcIssuer().trim().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "'" + OpenTelemetrySourceConnectorConfig.OTLP_AUTH_OIDC_ISSUER_CONFIG
+                                + "' must be provided when the 'oidc' authentication method is enabled");
+            }
+            log.info("Authentication enabled - methods: {}", config.getAuthMethods());
+        }
+    }
+
+    private static boolean hasNonBlankApiKey(org.apache.kafka.common.config.types.Password apiKey) {
+        if (apiKey == null || apiKey.value() == null) {
+            return false;
+        }
+        for (String key : apiKey.value().split(",")) {
+            if (!key.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

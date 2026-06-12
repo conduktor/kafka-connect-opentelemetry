@@ -5,9 +5,14 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.types.Password;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Configuration for the OpenTelemetry OTLP Source Connector.
@@ -59,6 +64,41 @@ public class OpenTelemetrySourceConnectorConfig extends AbstractConfig {
     // Bind address configuration
     public static final String OTLP_BIND_ADDRESS_CONFIG = "otlp.bind.address";
     private static final String OTLP_BIND_ADDRESS_DOC = "Bind address for OTLP receivers (default: 0.0.0.0)";
+
+    // Authentication configuration
+    public static final String OTLP_AUTH_ENABLED_CONFIG = "otlp.auth.enabled";
+    private static final String OTLP_AUTH_ENABLED_DOC =
+            "Enable authentication on the OTLP gRPC and HTTP receivers. When disabled, the ports accept "
+                    + "any incoming telemetry (default: false).";
+
+    public static final String OTLP_AUTH_METHODS_CONFIG = "otlp.auth.methods";
+    private static final String OTLP_AUTH_METHODS_DOC =
+            "Comma-separated list of enabled authentication methods. Supported values: 'api-key', 'oidc'. "
+                    + "A request is accepted if it satisfies any one of the configured methods.";
+
+    public static final String OTLP_AUTH_API_KEY_CONFIG = "otlp.auth.api-key";
+    private static final String OTLP_AUTH_API_KEY_DOC =
+            "Comma-separated list of valid API keys. A request authenticates if its key header matches "
+                    + "any of these values. Stored as a password (masked in logs and the REST API).";
+
+    public static final String OTLP_AUTH_API_KEY_HEADER_CONFIG = "otlp.auth.api-key.header";
+    private static final String OTLP_AUTH_API_KEY_HEADER_DOC =
+            "Header (HTTP) / metadata key (gRPC) carrying the API key (default: x-api-key).";
+
+    public static final String OTLP_AUTH_OIDC_ISSUER_CONFIG = "otlp.auth.oidc.issuer";
+    private static final String OTLP_AUTH_OIDC_ISSUER_DOC =
+            "OIDC issuer URL. Bearer tokens must carry a matching 'iss' claim. Used to discover the JWKS "
+                    + "endpoint when otlp.auth.oidc.jwks-uri is not set.";
+
+    public static final String OTLP_AUTH_OIDC_JWKS_URI_CONFIG = "otlp.auth.oidc.jwks-uri";
+    private static final String OTLP_AUTH_OIDC_JWKS_URI_DOC =
+            "Explicit JWKS URI for fetching token-signing public keys. When empty, it is derived from the "
+                    + "issuer's /.well-known/openid-configuration document.";
+
+    public static final String OTLP_AUTH_OIDC_AUDIENCE_CONFIG = "otlp.auth.oidc.audience";
+    private static final String OTLP_AUTH_OIDC_AUDIENCE_DOC =
+            "Expected 'aud' claim. When set, tokens whose audience does not include this value are rejected. "
+                    + "When empty, the audience claim is not checked.";
 
     public static final ConfigDef CONFIG_DEF = createConfigDef();
 
@@ -167,8 +207,63 @@ public class OpenTelemetrySourceConnectorConfig extends AbstractConfig {
                         "0.0.0.0",
                         Importance.LOW,
                         OTLP_BIND_ADDRESS_DOC
+                )
+                // Authentication
+                .define(
+                        OTLP_AUTH_ENABLED_CONFIG,
+                        Type.BOOLEAN,
+                        false,
+                        Importance.HIGH,
+                        OTLP_AUTH_ENABLED_DOC
+                )
+                .define(
+                        OTLP_AUTH_METHODS_CONFIG,
+                        Type.LIST,
+                        Collections.emptyList(),
+                        new AuthMethodsValidator(),
+                        Importance.HIGH,
+                        OTLP_AUTH_METHODS_DOC
+                )
+                .define(
+                        OTLP_AUTH_API_KEY_CONFIG,
+                        Type.PASSWORD,
+                        null,
+                        Importance.HIGH,
+                        OTLP_AUTH_API_KEY_DOC
+                )
+                .define(
+                        OTLP_AUTH_API_KEY_HEADER_CONFIG,
+                        Type.STRING,
+                        "x-api-key",
+                        Importance.MEDIUM,
+                        OTLP_AUTH_API_KEY_HEADER_DOC
+                )
+                .define(
+                        OTLP_AUTH_OIDC_ISSUER_CONFIG,
+                        Type.STRING,
+                        "",
+                        Importance.HIGH,
+                        OTLP_AUTH_OIDC_ISSUER_DOC
+                )
+                .define(
+                        OTLP_AUTH_OIDC_JWKS_URI_CONFIG,
+                        Type.STRING,
+                        "",
+                        Importance.MEDIUM,
+                        OTLP_AUTH_OIDC_JWKS_URI_DOC
+                )
+                .define(
+                        OTLP_AUTH_OIDC_AUDIENCE_CONFIG,
+                        Type.STRING,
+                        "",
+                        Importance.MEDIUM,
+                        OTLP_AUTH_OIDC_AUDIENCE_DOC
                 );
     }
+
+    /** Supported authentication method identifiers. */
+    public static final String AUTH_METHOD_API_KEY = "api-key";
+    public static final String AUTH_METHOD_OIDC = "oidc";
 
     public OpenTelemetrySourceConnectorConfig(Map<?, ?> originals) {
         super(CONFIG_DEF, originals);
@@ -228,6 +323,53 @@ public class OpenTelemetrySourceConnectorConfig extends AbstractConfig {
         return getString(OTLP_BIND_ADDRESS_CONFIG);
     }
 
+    public boolean isAuthEnabled() {
+        return getBoolean(OTLP_AUTH_ENABLED_CONFIG);
+    }
+
+    /**
+     * Enabled authentication methods, normalized to lowercase.
+     */
+    public List<String> getAuthMethods() {
+        List<String> raw = getList(OTLP_AUTH_METHODS_CONFIG);
+        List<String> normalized = new ArrayList<>(raw.size());
+        for (String method : raw) {
+            normalized.add(method.trim().toLowerCase());
+        }
+        return Collections.unmodifiableList(normalized);
+    }
+
+    public boolean isApiKeyAuthEnabled() {
+        return getAuthMethods().contains(AUTH_METHOD_API_KEY);
+    }
+
+    public boolean isOidcAuthEnabled() {
+        return getAuthMethods().contains(AUTH_METHOD_OIDC);
+    }
+
+    /**
+     * Configured API key(s). Returns null when unset.
+     */
+    public Password getApiKey() {
+        return getPassword(OTLP_AUTH_API_KEY_CONFIG);
+    }
+
+    public String getApiKeyHeader() {
+        return getString(OTLP_AUTH_API_KEY_HEADER_CONFIG);
+    }
+
+    public String getOidcIssuer() {
+        return getString(OTLP_AUTH_OIDC_ISSUER_CONFIG);
+    }
+
+    public String getOidcJwksUri() {
+        return getString(OTLP_AUTH_OIDC_JWKS_URI_CONFIG);
+    }
+
+    public String getOidcAudience() {
+        return getString(OTLP_AUTH_OIDC_AUDIENCE_CONFIG);
+    }
+
     /**
      * Validator for message format configuration.
      */
@@ -248,6 +390,34 @@ public class OpenTelemetrySourceConnectorConfig extends AbstractConfig {
         @Override
         public String toString() {
             return "Valid message format: 'json' or 'protobuf'";
+        }
+    }
+
+    /**
+     * Validator for the authentication methods list. Each entry must be a supported method.
+     */
+    private static class AuthMethodsValidator implements ConfigDef.Validator {
+        private static final Set<String> SUPPORTED = Set.of(AUTH_METHOD_API_KEY, AUTH_METHOD_OIDC);
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void ensureValid(String name, Object value) {
+            if (value == null) {
+                return;
+            }
+            List<String> methods = (List<String>) value;
+            for (String method : methods) {
+                String normalized = method.trim().toLowerCase();
+                if (!SUPPORTED.contains(normalized)) {
+                    throw new ConfigException(name, value,
+                            "Unsupported authentication method '" + method + "'. Supported: " + SUPPORTED);
+                }
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "Any subset of " + SUPPORTED;
         }
     }
 

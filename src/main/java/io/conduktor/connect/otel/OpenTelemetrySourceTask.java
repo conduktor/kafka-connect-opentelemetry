@@ -96,8 +96,12 @@ public class OpenTelemetrySourceTask extends SourceTask {
         // Restore offset from Kafka Connect framework if available
         restoreOffsetState();
 
-        // Create and start OTLP receiver
-        receiver = new OtlpReceiver(config);
+        // Create and start OTLP receiver, wiring in authentication when configured
+        OtlpAuthenticator authenticator = OtlpAuthenticatorFactory.create(config);
+        if (authenticator != null) {
+            log.info("event=auth_enabled methods={}", config.getAuthMethods());
+        }
+        receiver = new OtlpReceiver(config, authenticator);
         if (metrics != null) {
             receiver.setMetrics(metrics);
         }

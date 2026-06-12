@@ -116,4 +116,67 @@ class OpenTelemetrySourceConnectorTest {
 
         assertDoesNotThrow(() -> connector.start(props));
     }
+
+    @Test
+    void testStartWithAuthEnabledButNoMethod() {
+        props.put("otlp.auth.enabled", "true");
+
+        assertThrows(IllegalArgumentException.class, () -> connector.start(props),
+                "Auth enabled with no method should fail fast");
+    }
+
+    @Test
+    void testStartWithApiKeyMethodButNoKey() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "api-key");
+
+        assertThrows(IllegalArgumentException.class, () -> connector.start(props),
+                "api-key method without a key should fail fast");
+    }
+
+    @Test
+    void testStartWithOidcMethodButNoIssuer() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "oidc");
+
+        assertThrows(IllegalArgumentException.class, () -> connector.start(props),
+                "oidc method without an issuer should fail fast");
+    }
+
+    @Test
+    void testStartWithApiKeyMethodButOnlyBlankKeys() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "api-key");
+        props.put("otlp.auth.api-key", " , , ");
+
+        assertThrows(IllegalArgumentException.class, () -> connector.start(props),
+                "api-key method with only blank keys should fail fast");
+    }
+
+    @Test
+    void testStartWithValidApiKeyAuth() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "api-key");
+        props.put("otlp.auth.api-key", "secret");
+
+        assertDoesNotThrow(() -> connector.start(props));
+    }
+
+    @Test
+    void testStartWithValidOidcAuth() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "oidc");
+        props.put("otlp.auth.oidc.issuer", "https://idp.example/realms/otlp");
+
+        assertDoesNotThrow(() -> connector.start(props));
+    }
+
+    @Test
+    void testStartWithAuthMethodSetButAuthDisabledDoesNotValidate() {
+        // Methods declared but auth disabled: should not enforce method-specific requirements
+        props.put("otlp.auth.enabled", "false");
+        props.put("otlp.auth.methods", "api-key");
+
+        assertDoesNotThrow(() -> connector.start(props));
+    }
 }
