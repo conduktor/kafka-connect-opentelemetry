@@ -1,0 +1,31 @@
+{
+  "name": "otlp-source-connector-authenticated",
+  "config": {
+    "connector.class": "io.conduktor.connect.otel.OpenTelemetrySourceConnector",
+    "tasks.max": "1",
+
+    "otlp.grpc.enabled": "true",
+    "otlp.grpc.port": "4317",
+    "otlp.http.enabled": "true",
+    "otlp.http.port": "4318",
+    "otlp.bind.address": "0.0.0.0",
+
+    "kafka.topic.traces": "otlp-traces",
+    "kafka.topic.metrics": "otlp-metrics",
+    "kafka.topic.logs": "otlp-logs",
+
+    "otlp.message.format": "json",
+    "otlp.message.queue.size": "10000",
+
+    "otlp.tls.enabled": "true",
+    "otlp.tls.cert.path": "/etc/otlp/tls/server.crt",
+    "otlp.tls.key.path": "/etc/otlp/tls/server.key",
+
+    "otlp.auth.enabled": "true",
+    "otlp.auth.methods": "api-key,oidc",
+    "otlp.auth.api-key": "${file:/secrets/otlp.properties:api-key}",
+    "otlp.auth.api-key.header": "x-api-key",
+    "otlp.auth.oidc.issuer": "https://idp.example/realms/otlp",
+    "otlp.auth.oidc.audience": "otlp-connector"
+  }
+}

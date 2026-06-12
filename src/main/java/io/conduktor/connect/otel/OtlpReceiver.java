@@ -2,7 +2,6 @@ package io.conduktor.connect.otel;
 
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Server;
-import io.grpc.ServerBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.netty.bootstrap.ServerBootstrap;
@@ -11,6 +10,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
@@ -45,6 +46,9 @@ public class OtlpReceiver {
     private final String messageFormat;
     private final JsonFormat.Printer jsonPrinter;
 
+    // Optional authentication engine; null means no authentication is enforced.
+    private final OtlpAuthenticator authenticator;
+
     // Separate queues for each signal type
     private final BlockingQueue<OtlpMessage> tracesQueue;
     private final BlockingQueue<OtlpMessage> metricsQueue;
@@ -69,7 +73,12 @@ public class OtlpReceiver {
     private OpenTelemetryMetrics metrics;
 
     public OtlpReceiver(OpenTelemetrySourceConnectorConfig config) {
+        this(config, null);
+    }
+
+    public OtlpReceiver(OpenTelemetrySourceConnectorConfig config, OtlpAuthenticator authenticator) {
         this.config = config;
+        this.authenticator = authenticator;
         this.messageFormat = config.getMessageFormat();
         this.jsonPrinter = JsonFormat.printer()
                 .includingDefaultValueFields()
@@ -194,12 +203,19 @@ public class OtlpReceiver {
         serverBuilder.addService(new MetricsServiceImpl());
         serverBuilder.addService(new LogsServiceImpl());
 
-        // TODO: Add TLS support if enabled
+        // Enforce authentication if configured
+        if (authenticator != null) {
+            serverBuilder.intercept(new OtlpGrpcAuthInterceptor(authenticator));
+            log.info("event=grpc_auth_enabled");
+        }
+
+        // Enable TLS if configured. Fails fast if the cert/key are invalid rather than
+        // silently serving plaintext.
         if (config.isTlsEnabled()) {
-            log.warn("event=tls_not_implemented message='TLS support not yet implemented for gRPC'");
-            // File certChainFile = new File(config.getTlsCertPath());
-            // File privateKeyFile = new File(config.getTlsKeyPath());
-            // serverBuilder.useTransportSecurity(certChainFile, privateKeyFile);
+            serverBuilder.useTransportSecurity(
+                    new File(config.getTlsCertPath()),
+                    new File(config.getTlsKeyPath()));
+            log.info("event=grpc_tls_enabled cert_path={}", config.getTlsCertPath());
         }
 
         grpcServer = serverBuilder.build().start();
@@ -216,6 +232,17 @@ public class OtlpReceiver {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
 
+        // Build the TLS context up front so an invalid cert/key fails start() rather than
+        // silently serving plaintext.
+        final SslContext sslContext = config.isTlsEnabled()
+                ? SslContextBuilder.forServer(
+                        new File(config.getTlsCertPath()),
+                        new File(config.getTlsKeyPath())).build()
+                : null;
+        if (sslContext != null) {
+            log.info("event=http_tls_enabled cert_path={}", config.getTlsCertPath());
+        }
+
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -223,6 +250,9 @@ public class OtlpReceiver {
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
+                        if (sslContext != null) {
+                            pipeline.addLast(sslContext.newHandler(ch.alloc()));
+                        }
                         pipeline.addLast(new HttpServerCodec());
                         pipeline.addLast(new HttpObjectAggregator(10 * 1024 * 1024)); // 10MB max
                         pipeline.addLast(new OtlpHttpHandler());
@@ -347,6 +377,13 @@ public class OtlpReceiver {
             String uri = request.uri();
 
             try {
+                if (authenticator != null && !authenticate(request)) {
+                    log.warn("event=http_auth_rejected uri={}", uri);
+                    sendHttpResponse(ctx, request, HttpResponseStatus.UNAUTHORIZED,
+                            "{\"error\":\"unauthorized\"}");
+                    return;
+                }
+
                 if (request.method() != HttpMethod.POST) {
                     sendHttpResponse(ctx, request, HttpResponseStatus.METHOD_NOT_ALLOWED, "Only POST method is supported");
                     return;
@@ -368,8 +405,16 @@ public class OtlpReceiver {
             } catch (Exception e) {
                 log.error("event=http_request_error uri={} error={}", uri, e.getMessage(), e);
                 sendHttpResponse(ctx, request, HttpResponseStatus.INTERNAL_SERVER_ERROR,
-                        "Error processing request: " + e.getMessage());
+                        "{\"error\":\"internal error\"}");
             }
+        }
+
+        private boolean authenticate(FullHttpRequest request) {
+            java.util.Map<String, String> headers = new java.util.HashMap<>();
+            for (java.util.Map.Entry<String, String> entry : request.headers()) {
+                headers.put(entry.getKey(), entry.getValue());
+            }
+            return authenticator.authenticate(headers).isAuthenticated();
         }
 
         private void handleTraces(ChannelHandlerContext ctx, FullHttpRequest request, byte[] data) {
@@ -397,7 +442,7 @@ public class OtlpReceiver {
             } catch (Exception e) {
                 log.error("event=http_trace_error error={}", e.getMessage(), e);
                 sendHttpResponse(ctx, request, HttpResponseStatus.BAD_REQUEST,
-                        "{\"error\":\"" + e.getMessage() + "\"}");
+                        "{\"error\":\"invalid request payload\"}");
             }
         }
 
@@ -437,7 +482,7 @@ public class OtlpReceiver {
             } catch (Exception e) {
                 log.error("event=http_metrics_error error={}", e.getMessage(), e);
                 sendHttpResponse(ctx, request, HttpResponseStatus.BAD_REQUEST,
-                        "{\"error\":\"" + e.getMessage() + "\"}");
+                        "{\"error\":\"invalid request payload\"}");
             }
         }
 
@@ -477,7 +522,7 @@ public class OtlpReceiver {
             } catch (Exception e) {
                 log.error("event=http_logs_error error={}", e.getMessage(), e);
                 sendHttpResponse(ctx, request, HttpResponseStatus.BAD_REQUEST,
-                        "{\"error\":\"" + e.getMessage() + "\"}");
+                        "{\"error\":\"invalid request payload\"}");
             }
         }
 

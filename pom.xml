@@ -21,6 +21,7 @@
         <protobuf.version>3.25.1</protobuf.version>
         <opentelemetry.version>1.34.1</opentelemetry.version>
         <netty.version>4.1.104.Final</netty.version>
+        <nimbus.version>10.3</nimbus.version>
         <junit.version>5.9.2</junit.version>
         <mockito.version>5.2.0</mockito.version>
         <slf4j.version>1.7.36</slf4j.version>
@@ -102,6 +103,13 @@
             <version>${netty.version}</version>
         </dependency>
 
+        <!-- Nimbus JOSE + JWT: OIDC bearer token validation (JWKS, signature, claims) -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>${nimbus.version}</version>
+        </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -151,6 +159,13 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
             <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.dasniko</groupId>
+            <artifactId>testcontainers-keycloak</artifactId>
+            <version>3.7.0</version>
             <scope>test</scope>
         </dependency>
 

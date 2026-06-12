@@ -7,10 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Authentication on the OTLP receivers** (gRPC and HTTP), disabled by default:
+  - API key via configurable header / gRPC metadata (`otlp.auth.methods=api-key`)
+  - OIDC bearer tokens validated against the issuer's JWKS — signature, `exp`, `iss`, `aud`
+    (`otlp.auth.methods=oidc`)
+  - Multiple keys and both methods can be enabled simultaneously
+  - Secrets configured as Kafka Connect `password` types (masked, `ConfigProvider`-friendly)
+- **TLS support for OTLP receivers** (gRPC and HTTP) — fails fast on invalid cert/key instead of
+  serving plaintext
+
 ### Planned Features
 
-- [ ] TLS support for OTLP receivers (gRPC and HTTP)
-- [ ] Custom authentication mechanisms (API keys, mTLS)
+- [ ] mTLS (mutual TLS) client authentication
 - [ ] Configurable message transformations (SMTs)
 - [ ] Metrics dashboard templates (Grafana)
 - [ ] Helm chart for Kubernetes deployments
