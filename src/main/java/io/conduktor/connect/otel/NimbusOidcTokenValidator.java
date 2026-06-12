@@ -72,10 +72,12 @@ public class NimbusOidcTokenValidator implements OidcTokenValidator {
 
     /**
      * Resolve the JWKS URL, either from the explicit config value or via OIDC discovery.
+     * The resulting URL must use HTTPS (loopback hosts excepted) so that an on-path attacker
+     * cannot swap the signing keys.
      */
     static URL resolveJwksUrl(String issuer, String jwksUri) throws Exception {
         if (jwksUri != null && !jwksUri.trim().isEmpty()) {
-            return new URL(jwksUri.trim());
+            return requireSecure(new URL(jwksUri.trim()));
         }
         if (issuer == null || issuer.trim().isEmpty()) {
             throw new IllegalArgumentException("Either an OIDC issuer or an explicit JWKS URI must be configured");
@@ -84,7 +86,7 @@ public class NimbusOidcTokenValidator implements OidcTokenValidator {
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
-        URL wellKnown = new URL(base + WELL_KNOWN_SUFFIX);
+        URL wellKnown = requireSecure(new URL(base + WELL_KNOWN_SUFFIX));
         ResourceRetriever retriever = new DefaultResourceRetriever(5000, 5000);
         Resource resource = retriever.retrieveResource(wellKnown);
         Map<String, Object> doc = JSONObjectUtils.parse(resource.getContent());
@@ -92,7 +94,27 @@ public class NimbusOidcTokenValidator implements OidcTokenValidator {
         if (discovered == null || discovered.trim().isEmpty()) {
             throw new IllegalStateException("OIDC discovery document at " + wellKnown + " has no jwks_uri");
         }
-        return new URL(discovered);
+        return requireSecure(new URL(discovered));
+    }
+
+    /**
+     * Reject plain-HTTP key/discovery URLs unless they target a loopback host.
+     */
+    private static URL requireSecure(URL url) {
+        if ("https".equalsIgnoreCase(url.getProtocol()) || isLoopback(url.getHost())) {
+            return url;
+        }
+        throw new IllegalArgumentException(
+                "OIDC JWKS/discovery URL must use HTTPS (got " + url + "); plain HTTP is only allowed for loopback hosts");
+    }
+
+    private static boolean isLoopback(String host) {
+        if (host == null) {
+            return false;
+        }
+        String h = host.toLowerCase();
+        return h.equals("localhost") || h.equals("127.0.0.1") || h.startsWith("127.")
+                || h.equals("::1") || h.equals("[::1]");
     }
 
     @Override

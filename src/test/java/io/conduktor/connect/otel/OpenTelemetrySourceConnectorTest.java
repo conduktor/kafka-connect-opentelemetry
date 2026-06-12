@@ -144,6 +144,16 @@ class OpenTelemetrySourceConnectorTest {
     }
 
     @Test
+    void testStartWithApiKeyMethodButOnlyBlankKeys() {
+        props.put("otlp.auth.enabled", "true");
+        props.put("otlp.auth.methods", "api-key");
+        props.put("otlp.auth.api-key", " , , ");
+
+        assertThrows(IllegalArgumentException.class, () -> connector.start(props),
+                "api-key method with only blank keys should fail fast");
+    }
+
+    @Test
     void testStartWithValidApiKeyAuth() {
         props.put("otlp.auth.enabled", "true");
         props.put("otlp.auth.methods", "api-key");

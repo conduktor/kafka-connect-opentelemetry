@@ -110,6 +110,28 @@ class NimbusOidcTokenValidatorTest {
     }
 
     @Test
+    void resolveJwksUrlAcceptsHttpsUri() throws Exception {
+        assertEquals("https://idp.example/jwks",
+                NimbusOidcTokenValidator.resolveJwksUrl("https://idp.example", "https://idp.example/jwks").toString());
+    }
+
+    @Test
+    void resolveJwksUrlRejectsPlainHttpUriForRemoteHost() {
+        assertThrows(IllegalArgumentException.class,
+                () -> NimbusOidcTokenValidator.resolveJwksUrl("https://idp.example", "http://idp.example/jwks"));
+    }
+
+    @Test
+    void resolveJwksUrlAllowsPlainHttpForLoopback() throws Exception {
+        // localhost / 127.0.0.1 are allowed over http to support local dev and testing.
+        assertEquals("http://localhost:8080/realms/otlp/jwks",
+                NimbusOidcTokenValidator.resolveJwksUrl("http://localhost:8080/realms/otlp",
+                        "http://localhost:8080/realms/otlp/jwks").toString());
+        assertEquals("http://127.0.0.1:8080/jwks",
+                NimbusOidcTokenValidator.resolveJwksUrl("", "http://127.0.0.1:8080/jwks").toString());
+    }
+
+    @Test
     void skipsAudienceCheckWhenAudienceNotConfigured() throws Exception {
         // Audience not configured -> token with any audience is accepted (signature + iss + exp still checked)
         String jwt = token(signingKey, validClaims()

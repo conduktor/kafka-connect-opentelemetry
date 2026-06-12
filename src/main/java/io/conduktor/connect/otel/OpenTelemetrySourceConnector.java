@@ -71,11 +71,11 @@ public class OpenTelemetrySourceConnector extends SourceConnector {
                                 + OpenTelemetrySourceConnectorConfig.OTLP_AUTH_METHODS_CONFIG
                                 + "' when authentication is enabled (api-key, oidc)");
             }
-            if (config.isApiKeyAuthEnabled()
-                    && (config.getApiKey() == null || config.getApiKey().value().trim().isEmpty())) {
+            if (config.isApiKeyAuthEnabled() && !hasNonBlankApiKey(config.getApiKey())) {
                 throw new IllegalArgumentException(
                         "'" + OpenTelemetrySourceConnectorConfig.OTLP_AUTH_API_KEY_CONFIG
-                                + "' must be provided when the 'api-key' authentication method is enabled");
+                                + "' must contain at least one non-blank key when the 'api-key' "
+                                + "authentication method is enabled");
             }
             if (config.isOidcAuthEnabled() && config.getOidcIssuer().trim().isEmpty()) {
                 throw new IllegalArgumentException(
@@ -84,6 +84,18 @@ public class OpenTelemetrySourceConnector extends SourceConnector {
             }
             log.info("Authentication enabled - methods: {}", config.getAuthMethods());
         }
+    }
+
+    private static boolean hasNonBlankApiKey(org.apache.kafka.common.config.types.Password apiKey) {
+        if (apiKey == null || apiKey.value() == null) {
+            return false;
+        }
+        for (String key : apiKey.value().split(",")) {
+            if (!key.trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

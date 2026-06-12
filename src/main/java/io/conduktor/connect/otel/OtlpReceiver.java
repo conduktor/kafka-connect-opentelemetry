@@ -81,7 +81,7 @@ public class OtlpReceiver {
         this.authenticator = authenticator;
         this.messageFormat = config.getMessageFormat();
         this.jsonPrinter = JsonFormat.printer()
-                .includingDefaultValueFields()
+                .alwaysPrintFieldsWithNoPresence()
                 .preservingProtoFieldNames();
 
         int queueSize = config.getMessageQueueSize();
