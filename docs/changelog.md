@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Authentication on the OTLP receivers** (gRPC and HTTP), disabled by default:
-  - API key via configurable header / gRPC metadata (`otlp.auth.methods=api-key`)
-  - OIDC bearer tokens validated against the issuer's JWKS — signature, `exp`, `iss`, `aud`
-    (`otlp.auth.methods=oidc`)
-  - Multiple keys and both methods can be enabled simultaneously
-  - Secrets configured as Kafka Connect `password` types (masked, `ConfigProvider`-friendly)
-- **TLS support for OTLP receivers** (gRPC and HTTP) — fails fast on invalid cert/key instead of
-  serving plaintext
-
 ### Planned Features
 
 - [ ] mTLS (mutual TLS) client authentication
@@ -26,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Helm chart for Kubernetes deployments
 - [ ] Resource attribute filtering
 - [ ] Sampling configuration (head-based, tail-based)
+
+## [1.1.0] - 2026-06-11
+
+### Added
+
+- **Authentication on the OTLP receivers** (gRPC and HTTP), disabled by default:
+  - API key via configurable header / gRPC metadata (`otlp.auth.methods=api-key`)
+  - OIDC bearer tokens validated against the issuer's JWKS — signature, `exp`, `iss`, `aud`
+    (`otlp.auth.methods=oidc`); JWKS/discovery URL must use HTTPS (loopback excepted)
+  - Multiple keys and both methods can be enabled simultaneously
+  - Secrets configured as Kafka Connect `password` types (masked, `ConfigProvider`-friendly)
+- **TLS support for OTLP receivers** (gRPC and HTTP) — fails fast on invalid cert/key instead of
+  serving plaintext
+
+### Changed
+
+- HTTP error responses no longer echo raw exception messages to clients
+- Upgraded dependencies: gRPC 1.73.0, Protobuf 4.31.1, Netty 4.1.121, OpenTelemetry SDK 1.51.0,
+  SLF4J 2.0.17 (and test libs)
 
 ## [1.0.0] - 2025-12-17
 
